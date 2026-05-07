@@ -1,4 +1,4 @@
-const CACHE = 'fuelbox-v1';
+const CACHE = 'fuelbox-v4';
 const ASSETS = [
   '/',
   '/index.html',
