@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="42" fill="#0F0F0F"/>
+  <rect x="8" y="8" width="176" height="176" rx="36" fill="#1A1A1A"/>
+  <text x="96" y="100" font-family="Arial Black, sans-serif" font-weight="900" font-size="80" fill="#E8431A" text-anchor="middle" dominant-baseline="middle">F</text>
+  <text x="96" y="152" font-family="Arial, sans-serif" font-size="18" fill="#F7A325" text-anchor="middle" font-weight="700" letter-spacing="3">FUELBOX</text>
+</svg>
