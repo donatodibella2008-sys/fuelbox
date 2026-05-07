@@ -165,6 +165,17 @@ body{font-family:'DM Sans',sans-serif;background:var(--dark);color:var(--text);}
       </div>
     </div>
     <div class="tip-box" id="daily-tip"><strong>Tip:</strong> Apuntá a <strong style="color:var(--accent2);">2g proteína por kg</strong> de peso. Registrá tu primera comida para ver el análisis del día.</div>
+    <!-- Micronutrientes del día -->
+    <div class="card" id="micro-card" style="padding:12px 16px;">
+      <div class="card-label" style="margin-bottom:8px;">micronutrientes · hoy</div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;text-align:center;">
+        <div><div style="font-size:13px;font-weight:600;" id="micro-fib">0g</div><div style="font-size:9px;color:var(--muted);">Fibra</div><div style="font-size:8px;color:var(--muted);">/25g</div></div>
+        <div><div style="font-size:13px;font-weight:600;" id="micro-na">0mg</div><div style="font-size:9px;color:var(--muted);">Sodio</div><div style="font-size:8px;color:var(--muted);">/2300</div></div>
+        <div><div style="font-size:13px;font-weight:600;" id="micro-ca">0mg</div><div style="font-size:9px;color:var(--muted);">Calcio</div><div style="font-size:8px;color:var(--muted);">/1000</div></div>
+        <div><div style="font-size:13px;font-weight:600;" id="micro-fe">0mg</div><div style="font-size:9px;color:var(--muted);">Hierro</div><div style="font-size:8px;color:var(--muted);">/18mg</div></div>
+        <div><div style="font-size:13px;font-weight:600;" id="micro-vitc">0mg</div><div style="font-size:9px;color:var(--muted);">Vit C</div><div style="font-size:8px;color:var(--muted);">/90mg</div></div>
+      </div>
+    </div>
     <div class="section-title">comidas de hoy</div>
     <div id="food-list"></div>
     <div id="empty-state" class="empty-state">
@@ -414,73 +425,180 @@ body{font-family:'DM Sans',sans-serif;background:var(--dark);color:var(--text);}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
-// ── Base de datos de alimentos ────────────────────────────────────────
+// ── Base de datos de alimentos (USDA SR Legacy + valores estándar) ─────
+// Campos por 100g: n=nombre, cal=kcal, p=proteína, c=carbos, f=grasas,
+//   fib=fibra(g), na=sodio(mg), ca=calcio(mg), fe=hierro(mg), vitc=vitC(mg)
 const DB = [
-  {n:'Pollo pechuga sin piel',cal:134,p:27,c:0,f:3,cat:'🥩'},{n:'Pollo muslo sin piel',cal:186,p:18,c:0,f:12,cat:'🥩'},
-  {n:'Pollo entero',cal:170,p:18,c:0,f:10,cat:'🥩'},{n:'Carne vacuna magra',cal:181,p:26,c:0,f:8,cat:'🥩'},
-  {n:'Tira de asado',cal:401,p:22,c:0,f:35,cat:'🥩'},{n:'Vacío',cal:350,p:24,c:0,f:28,cat:'🥩'},
-  {n:'Cuadril',cal:142,p:24,c:0,f:5,cat:'🥩'},{n:'Lomo',cal:119,p:26,c:0,f:2,cat:'🥩'},
-  {n:'Carne picada',cal:282,p:20,c:0,f:22,cat:'🥩'},{n:'Hamburguesa',cal:330,p:18,c:5,f:26,cat:'🥩'},
-  {n:'Milanesa frita',cal:310,p:22,c:15,f:18,cat:'🥩'},{n:'Cerdo lomo',cal:208,p:25,c:0,f:12,cat:'🥩'},
-  {n:'Panceta',cal:670,p:12,c:0,f:68,cat:'🥩'},{n:'Chorizo',cal:415,p:20,c:2,f:38,cat:'🥩'},
-  {n:'Jamón cocido',cal:126,p:18,c:2,f:5,cat:'🥩'},{n:'Salchicha parrillera',cal:415,p:14,c:2,f:38,cat:'🥩'},
-  {n:'Pavo pechuga',cal:134,p:22,c:0,f:2,cat:'🥩'},{n:'Conejo',cal:160,p:20,c:0,f:8,cat:'🥩'},
-  {n:'Merluza',cal:86,p:20,c:0,f:2,cat:'🐟'},{n:'Atún en agua',cal:127,p:25,c:0,f:3,cat:'🐟'},
-  {n:'Atún en aceite',cal:280,p:22,c:0,f:22,cat:'🐟'},{n:'Atún fresco',cal:170,p:25,c:0,f:8,cat:'🐟'},
-  {n:'Salmón',cal:172,p:22,c:0,f:13,cat:'🐟'},{n:'Trucha',cal:94,p:18,c:0,f:3,cat:'🐟'},
-  {n:'Caballa',cal:153,p:18,c:0,f:9,cat:'🐟'},{n:'Sardinas',cal:151,p:18,c:0,f:9,cat:'🐟'},
-  {n:'Bacalao fresco',cal:74,p:18,c:0,f:0.5,cat:'🐟'},{n:'Pejerrey',cal:89,p:18,c:0,f:2,cat:'🐟'},
-  {n:'Dorado',cal:80,p:18,c:0,f:1,cat:'🐟'},{n:'Corvina',cal:95,p:18,c:0,f:2,cat:'🐟'},
-  {n:'Surubí',cal:102,p:18,c:0,f:3,cat:'🐟'},{n:'Pez espada',cal:109,p:20,c:0,f:4,cat:'🐟'},
-  {n:'Anchoa',cal:175,p:18,c:0,f:12,cat:'🐟'},{n:'Pulpo',cal:57,p:11,c:1,f:1,cat:'🐟'},
-  {n:'Calamar',cal:82,p:16,c:1,f:1,cat:'🐟'},{n:'Camarón gambas',cal:96,p:18,c:0,f:2,cat:'🐟'},
-  {n:'Langostinos',cal:96,p:18,c:0,f:2,cat:'🐟'},{n:'Mejillones',cal:74,p:12,c:2,f:2,cat:'🐟'},
-  {n:'Huevo entero',cal:162,p:13,c:1,f:11,cat:'🥚'},{n:'Clara de huevo',cal:48,p:11,c:0,f:0,cat:'🥚'},
-  {n:'Yema de huevo',cal:368,p:16,c:4,f:30,cat:'🥚'},
-  {n:'Arroz blanco cocido',cal:130,p:3,c:28,f:0.3,cat:'🌾'},{n:'Arroz blanco seco',cal:354,p:7,c:78,f:0.6,cat:'🌾'},
-  {n:'Arroz integral',cal:350,p:7,c:76,f:1.5,cat:'🌾'},{n:'Avena',cal:367,p:13,c:66,f:7,cat:'🌾'},
-  {n:'Pan blanco',cal:255,p:8,c:50,f:3,cat:'🌾'},{n:'Pan integral',cal:239,p:8,c:46,f:3,cat:'🌾'},
-  {n:'Pasta seca',cal:361,p:12,c:75,f:1.5,cat:'🌾'},{n:'Fideos cocidos',cal:115,p:4,c:24,f:0.5,cat:'🌾'},
-  {n:'Ñoquis cocidos',cal:115,p:3,c:24,f:1,cat:'🌾'},{n:'Polenta cocida',cal:70,p:2,c:15,f:0.5,cat:'🌾'},
-  {n:'Maicena',cal:358,p:0,c:88,f:0,cat:'🌾'},{n:'Harina de trigo',cal:353,p:10,c:74,f:1,cat:'🌾'},
-  {n:'Papa cocida',cal:80,p:2,c:18,f:0.1,cat:'🥔'},{n:'Papas fritas caseras',cal:300,p:4,c:38,f:15,cat:'🥔'},
-  {n:'Papas fritas bastón',cal:544,p:7,c:60,f:30,cat:'🥔'},{n:'Batata cocida',cal:100,p:2,c:23,f:0.1,cat:'🥔'},
-  {n:'Mandioca',cal:148,p:2,c:36,f:0.3,cat:'🥔'},{n:'Choclo',cal:96,p:3,c:21,f:1,cat:'🥔'},
-  {n:'Lechuga',cal:18,p:1,c:3,f:0.2,cat:'🌿'},{n:'Tomate',cal:22,p:1,c:4,f:0.2,cat:'🌿'},
-  {n:'Zanahoria',cal:42,p:1,c:10,f:0.2,cat:'🌿'},{n:'Brócoli',cal:31,p:3,c:6,f:0.4,cat:'🌿'},
-  {n:'Espinaca',cal:32,p:3,c:4,f:0.4,cat:'🌿'},{n:'Calabaza',cal:24,p:1,c:5,f:0.1,cat:'🌿'},
-  {n:'Cebolla',cal:47,p:1,c:11,f:0.1,cat:'🌿'},{n:'Zapallito',cal:17,p:1,c:3,f:0.2,cat:'🌿'},
-  {n:'Berenjena',cal:26,p:1,c:6,f:0.2,cat:'🌿'},{n:'Pepino',cal:12,p:0.5,c:2,f:0.1,cat:'🌿'},
-  {n:'Remolacha',cal:40,p:2,c:9,f:0.1,cat:'🌿'},{n:'Pimiento',cal:22,p:1,c:5,f:0.2,cat:'🌿'},
-  {n:'Coliflor',cal:30,p:2,c:6,f:0.3,cat:'🌿'},{n:'Repollo',cal:19,p:1,c:4,f:0.1,cat:'🌿'},
-  {n:'Champiñones',cal:28,p:3,c:4,f:0.3,cat:'🌿'},{n:'Acelga',cal:26,p:2,c:5,f:0.2,cat:'🌿'},
-  {n:'Apio',cal:17,p:0.7,c:3,f:0.2,cat:'🌿'},{n:'Hinojo',cal:16,p:1,c:3,f:0.2,cat:'🌿'},
-  {n:'Banana',cal:90,p:1,c:23,f:0.3,cat:'🍎'},{n:'Manzana',cal:52,p:0.3,c:14,f:0.2,cat:'🍎'},
-  {n:'Naranja',cal:44,p:1,c:12,f:0.2,cat:'🍎'},{n:'Pera',cal:61,p:0.4,c:15,f:0.1,cat:'🍎'},
-  {n:'Frutilla',cal:36,p:0.8,c:8,f:0.4,cat:'🍎'},{n:'Sandía',cal:30,p:0.6,c:8,f:0.2,cat:'🍎'},
-  {n:'Melón',cal:31,p:0.8,c:8,f:0.2,cat:'🍎'},{n:'Uva',cal:81,p:1,c:18,f:0.2,cat:'🍎'},
-  {n:'Kiwi',cal:51,p:1,c:12,f:0.4,cat:'🍎'},{n:'Mandarina',cal:40,p:0.8,c:10,f:0.3,cat:'🍎'},
-  {n:'Palta',cal:167,p:2,c:9,f:15,cat:'🍎'},{n:'Mango',cal:64,p:0.8,c:17,f:0.4,cat:'🍎'},
-  {n:'Durazno',cal:38,p:0.9,c:10,f:0.3,cat:'🍎'},{n:'Uva pasa',cal:324,p:3,c:79,f:0.5,cat:'🍎'},
-  {n:'Leche entera',cal:68,p:3,c:5,f:3,cat:'🥛'},{n:'Leche descremada',cal:36,p:3.5,c:5,f:0.1,cat:'🥛'},
-  {n:'Yogur natural',cal:62,p:4,c:5,f:3,cat:'🥛'},{n:'Yogur desnatado',cal:45,p:5,c:6,f:0.2,cat:'🥛'},
-  {n:'Queso mozzarella',cal:245,p:22,c:2,f:17,cat:'🥛'},{n:'Queso cheddar',cal:381,p:23,c:2,f:31,cat:'🥛'},
-  {n:'Queso blanco',cal:70,p:12,c:2,f:1,cat:'🥛'},{n:'Queso parmesano',cal:393,p:36,c:3,f:26,cat:'🥛'},
-  {n:'Queso crema',cal:245,p:6,c:3,f:23,cat:'🥛'},{n:'Ricota',cal:170,p:11,c:3,f:13,cat:'🥛'},
-  {n:'Garbanzos cocidos',cal:180,p:9,c:30,f:3,cat:'🫘'},{n:'Lentejas cocidas',cal:116,p:9,c:20,f:0.4,cat:'🫘'},
-  {n:'Porotos cocidos',cal:130,p:9,c:23,f:0.5,cat:'🫘'},{n:'Arvejas',cal:84,p:6,c:15,f:0.4,cat:'🫘'},
-  {n:'Soja',cal:403,p:36,c:30,f:18,cat:'🫘'},
-  {n:'Almendras',cal:620,p:21,c:22,f:50,cat:'🌰'},{n:'Nueces',cal:660,p:15,c:14,f:65,cat:'🌰'},
-  {n:'Maní',cal:560,p:26,c:16,f:49,cat:'🌰'},{n:'Pistacho',cal:581,p:20,c:28,f:45,cat:'🌰'},
-  {n:'Avellanas',cal:675,p:15,c:17,f:61,cat:'🌰'},
-  {n:'Aceite de oliva',cal:900,p:0,c:0,f:100,cat:'🧈'},{n:'Aceite de girasol',cal:900,p:0,c:0,f:100,cat:'🧈'},
-  {n:'Manteca',cal:752,p:1,c:0,f:81,cat:'🧈'},{n:'Mayonesa',cal:718,p:1,c:2,f:79,cat:'🧈'},
-  {n:'Azúcar',cal:380,p:0,c:100,f:0,cat:'🍬'},{n:'Miel',cal:300,p:0,c:82,f:0,cat:'🍬'},
-  {n:'Dulce de leche',cal:330,p:6,c:55,f:9,cat:'🍬'},{n:'Chocolate con leche',cal:550,p:7,c:58,f:32,cat:'🍬'},
-  {n:'Mermelada',cal:280,p:0.5,c:68,f:0.2,cat:'🍬'},{n:'Gaseosa',cal:42,p:0,c:11,f:0,cat:'🥤'},
-  {n:'Cerveza',cal:45,p:0.5,c:4,f:0,cat:'🥤'},{n:'Vino',cal:70,p:0.1,c:2,f:0,cat:'🥤'},
-  {n:'Ketchup',cal:98,p:1,c:24,f:0.5,cat:'🧴'},{n:'Salsa de tomate',cal:86,p:2,c:18,f:0.5,cat:'🧴'},
-  {n:'Salsa de soja',cal:61,p:6,c:8,f:0,cat:'🧴'},{n:'Mostaza',cal:15,p:1,c:1,f:0,cat:'🧴'},
+  // ── CARNES / AVES ──────────────────────────────────────────────────────
+  {n:'Pollo pechuga sin piel',cal:120,p:22.5,c:0,f:2.6,fib:0,na:74,ca:11,fe:0.89,vitc:0,cat:'🥩'},
+  {n:'Pollo muslo sin piel',cal:177,p:18.1,c:0,f:11.1,fib:0,na:79,ca:11,fe:0.98,vitc:0,cat:'🥩'},
+  {n:'Pollo entero',cal:215,p:18.6,c:0,f:15.1,fib:0,na:82,ca:12,fe:1.07,vitc:0,cat:'🥩'},
+  {n:'Carne vacuna magra (bife)',cal:158,p:26.2,c:0,f:5.4,fib:0,na:66,ca:6,fe:2.6,vitc:0,cat:'🥩'},
+  {n:'Tira de asado',cal:332,p:19.6,c:0,f:27.3,fib:0,na:70,ca:12,fe:2.5,vitc:0,cat:'🥩'},
+  {n:'Vacío',cal:281,p:20.5,c:0,f:21.7,fib:0,na:69,ca:10,fe:2.4,vitc:0,cat:'🥩'},
+  {n:'Cuadril',cal:142,p:23.5,c:0,f:4.9,fib:0,na:67,ca:7,fe:2.7,vitc:0,cat:'🥩'},
+  {n:'Lomo',cal:119,p:25.6,c:0,f:1.9,fib:0,na:68,ca:7,fe:2.4,vitc:0,cat:'🥩'},
+  {n:'Carne picada 20%',cal:254,p:17.2,c:0,f:20.1,fib:0,na:72,ca:18,fe:1.97,vitc:0,cat:'🥩'},
+  {n:'Hamburguesa',cal:295,p:17.2,c:3,f:23.5,fib:0,na:350,ca:15,fe:2.1,vitc:0,cat:'🥩'},
+  {n:'Milanesa frita',cal:268,p:22.7,c:11.4,f:14.2,fib:0.5,na:420,ca:40,fe:2.7,vitc:0,cat:'🥩'},
+  {n:'Cerdo lomo magro',cal:136,p:20.9,c:0,f:5.4,fib:0,na:57,ca:12,fe:0.87,vitc:0,cat:'🥩'},
+  {n:'Panceta',cal:458,p:12.9,c:0.6,f:45,fib:0,na:600,ca:7,fe:0.56,vitc:0,cat:'🥩'},
+  {n:'Chorizo fresco',cal:348,p:14,c:1.8,f:31.2,fib:0,na:790,ca:11,fe:1.3,vitc:0,cat:'🥩'},
+  {n:'Jamón cocido',cal:119,p:17.5,c:1.5,f:4.3,fib:0,na:1022,ca:7,fe:0.73,vitc:0,cat:'🥩'},
+  {n:'Salchicha parrillera',cal:348,p:13.6,c:1.5,f:31.5,fib:0,na:780,ca:10,fe:1.2,vitc:0,cat:'🥩'},
+  {n:'Pavo pechuga',cal:104,p:22.4,c:0,f:1.1,fib:0,na:70,ca:15,fe:1.04,vitc:0,cat:'🥩'},
+  {n:'Conejo',cal:136,p:20.1,c:0,f:5.6,fib:0,na:47,ca:20,fe:2.1,vitc:0,cat:'🥩'},
+  {n:'Carne vacuna asado de tira',cal:332,p:19.6,c:0,f:27.3,fib:0,na:70,ca:12,fe:2.5,vitc:0,cat:'🥩'},
+  {n:'Bife de chorizo',cal:224,p:22.1,c:0,f:14.3,fib:0,na:68,ca:8,fe:2.3,vitc:0,cat:'🥩'},
+  // ── PESCADOS / MARISCOS ────────────────────────────────────────────────
+  {n:'Merluza',cal:92,p:18.8,c:0,f:1.4,fib:0,na:97,ca:28,fe:0.54,vitc:0,cat:'🐟'},
+  {n:'Atún en agua',cal:116,p:25.5,c:0,f:0.8,fib:0,na:396,ca:12,fe:1.67,vitc:0,cat:'🐟'},
+  {n:'Atún en aceite',cal:200,p:23.6,c:0,f:11.4,fib:0,na:400,ca:14,fe:1.4,vitc:0,cat:'🐟'},
+  {n:'Atún fresco',cal:184,p:29.9,c:0,f:6.3,fib:0,na:47,ca:13,fe:0.77,vitc:0,cat:'🐟'},
+  {n:'Salmón',cal:208,p:20.4,c:0,f:13.4,fib:0,na:59,ca:12,fe:0.34,vitc:3.9,cat:'🐟'},
+  {n:'Trucha',cal:141,p:19.9,c:0,f:6.2,fib:0,na:52,ca:67,fe:0.3,vitc:0,cat:'🐟'},
+  {n:'Caballa',cal:205,p:18.6,c:0,f:13.9,fib:0,na:83,ca:12,fe:1.63,vitc:0,cat:'🐟'},
+  {n:'Sardinas en lata',cal:208,p:24.6,c:0,f:11.5,fib:0,na:505,ca:382,fe:2.92,vitc:0,cat:'🐟'},
+  {n:'Bacalao fresco',cal:82,p:17.8,c:0,f:0.7,fib:0,na:54,ca:16,fe:0.38,vitc:0,cat:'🐟'},
+  {n:'Anchoa (anchoíta)',cal:131,p:20.3,c:0,f:4.8,fib:0,na:3668,ca:147,fe:3.25,vitc:0,cat:'🐟'},
+  {n:'Pulpo cocido',cal:82,p:14.9,c:2.2,f:1.0,fib:0,na:311,ca:106,fe:4.17,vitc:5.7,cat:'🐟'},
+  {n:'Calamar',cal:92,p:15.6,c:3.1,f:1.4,fib:0,na:260,ca:33,fe:0.68,vitc:4.7,cat:'🐟'},
+  {n:'Camarón / gambas',cal:99,p:20.9,c:0.7,f:1.1,fib:0,na:146,ca:52,fe:0.52,vitc:0,cat:'🐟'},
+  {n:'Langostinos',cal:90,p:19.0,c:0.2,f:0.9,fib:0,na:148,ca:55,fe:0.52,vitc:0,cat:'🐟'},
+  {n:'Mejillones',cal:86,p:11.9,c:3.7,f:2.2,fib:0,na:286,ca:26,fe:3.95,vitc:8,cat:'🐟'},
+  {n:'Pejerrey',cal:89,p:18.5,c:0,f:1.8,fib:0,na:95,ca:25,fe:0.5,vitc:0,cat:'🐟'},
+  {n:'Corvina',cal:95,p:18.5,c:0,f:2.3,fib:0,na:88,ca:30,fe:0.5,vitc:0,cat:'🐟'},
+  {n:'Dorado',cal:80,p:17.8,c:0,f:1.1,fib:0,na:92,ca:22,fe:0.48,vitc:0,cat:'🐟'},
+  // ── HUEVOS ─────────────────────────────────────────────────────────────
+  {n:'Huevo entero',cal:143,p:12.6,c:0.7,f:9.5,fib:0,na:142,ca:56,fe:1.75,vitc:0,cat:'🥚'},
+  {n:'Clara de huevo',cal:52,p:11.0,c:0.7,f:0.2,fib:0,na:166,ca:7,fe:0.08,vitc:0,cat:'🥚'},
+  {n:'Yema de huevo',cal:322,p:15.9,c:3.6,f:26.5,fib:0,na:48,ca:129,fe:2.73,vitc:0,cat:'🥚'},
+  {n:'Huevo duro',cal:155,p:12.6,c:1.1,f:10.6,fib:0,na:124,ca:50,fe:1.19,vitc:0,cat:'🥚'},
+  // ── CEREALES / GRANOS ──────────────────────────────────────────────────
+  {n:'Arroz blanco cocido',cal:130,p:2.7,c:28.2,f:0.3,fib:0.4,na:1,ca:10,fe:0.2,vitc:0,cat:'🌾'},
+  {n:'Arroz blanco seco',cal:365,p:7.1,c:80,f:0.7,fib:1.3,na:1,ca:28,fe:0.8,vitc:0,cat:'🌾'},
+  {n:'Arroz integral seco',cal:370,p:7.9,c:77.2,f:2.9,fib:3.5,na:7,ca:23,fe:1.8,vitc:0,cat:'🌾'},
+  {n:'Avena (copos)',cal:389,p:16.9,c:66.3,f:6.9,fib:10.6,na:2,ca:54,fe:4.72,vitc:0,cat:'🌾'},
+  {n:'Avena cocida (porridge)',cal:71,p:2.5,c:12,f:1.5,fib:1.7,na:49,ca:11,fe:1.2,vitc:0,cat:'🌾'},
+  {n:'Quinoa cocida',cal:120,p:4.4,c:21.3,f:1.9,fib:2.8,na:7,ca:17,fe:1.49,vitc:0,cat:'🌾'},
+  {n:'Pan blanco',cal:265,p:9,c:51,f:3.2,fib:2.7,na:491,ca:67,fe:3.6,vitc:0,cat:'🌾'},
+  {n:'Pan integral',cal:247,p:13,c:41.3,f:4.2,fib:6,na:472,ca:107,fe:3.9,vitc:0,cat:'🌾'},
+  {n:'Pasta / fideos secos',cal:371,p:13,c:74.7,f:1.5,fib:3.2,na:6,ca:21,fe:3.3,vitc:0,cat:'🌾'},
+  {n:'Fideos cocidos',cal:158,p:5.8,c:30.9,f:0.9,fib:1.8,na:1,ca:7,fe:1.3,vitc:0,cat:'🌾'},
+  {n:'Ñoquis cocidos',cal:115,p:3,c:24,f:1,fib:1.2,na:250,ca:18,fe:0.8,vitc:0,cat:'🌾'},
+  {n:'Polenta cocida',cal:70,p:1.8,c:15,f:0.3,fib:0.5,na:7,ca:1,fe:0.27,vitc:0,cat:'🌾'},
+  {n:'Maicena',cal:381,p:0.3,c:91.3,f:0.1,fib:0.9,na:9,ca:2,fe:0.47,vitc:0,cat:'🌾'},
+  {n:'Harina de trigo',cal:364,p:10,c:76.3,f:1,fib:2.7,na:2,ca:15,fe:3.88,vitc:0,cat:'🌾'},
+  // ── TUBÉRCULOS ─────────────────────────────────────────────────────────
+  {n:'Papa cocida',cal:87,p:1.9,c:20.1,f:0.1,fib:1.8,na:5,ca:8,fe:0.31,vitc:13,cat:'🥔'},
+  {n:'Papas fritas caseras',cal:312,p:3.4,c:35.7,f:17.9,fib:3.8,na:12,ca:12,fe:1.3,vitc:9.7,cat:'🥔'},
+  {n:'Papas fritas bagging (bastón)',cal:312,p:3.4,c:35.7,f:17.9,fib:3.8,na:246,ca:12,fe:1.3,vitc:9.7,cat:'🥔'},
+  {n:'Batata / boniato cocido',cal:90,p:2,c:20.7,f:0.1,fib:3.3,na:36,ca:38,fe:0.72,vitc:17.1,cat:'🥔'},
+  {n:'Mandioca / yuca cocida',cal:112,p:0.8,c:27.2,f:0.3,fib:1,na:5,ca:16,fe:0.27,vitc:20.6,cat:'🥔'},
+  {n:'Choclo / maíz',cal:96,p:3.4,c:21,f:1.5,fib:2.4,na:15,ca:2,fe:0.52,vitc:6.8,cat:'🥔'},
+  // ── VERDURAS ───────────────────────────────────────────────────────────
+  {n:'Lechuga',cal:15,p:1.4,c:2.9,f:0.2,fib:1.3,na:28,ca:36,fe:0.97,vitc:9.2,cat:'🌿'},
+  {n:'Tomate',cal:18,p:0.9,c:3.9,f:0.2,fib:1.2,na:5,ca:10,fe:0.27,vitc:13.7,cat:'🌿'},
+  {n:'Zanahoria',cal:41,p:0.9,c:9.6,f:0.2,fib:2.8,na:69,ca:33,fe:0.3,vitc:5.9,cat:'🌿'},
+  {n:'Brócoli',cal:34,p:2.8,c:6.6,f:0.4,fib:2.6,na:33,ca:47,fe:0.73,vitc:89.2,cat:'🌿'},
+  {n:'Espinaca',cal:23,p:2.9,c:3.6,f:0.4,fib:2.2,na:79,ca:99,fe:2.71,vitc:28.1,cat:'🌿'},
+  {n:'Calabaza',cal:26,p:1,c:6.5,f:0.1,fib:0.5,na:1,ca:21,fe:0.8,vitc:9,cat:'🌿'},
+  {n:'Cebolla',cal:40,p:1.1,c:9.3,f:0.1,fib:1.7,na:4,ca:23,fe:0.21,vitc:7.4,cat:'🌿'},
+  {n:'Zapallito / zucchini',cal:17,p:1.2,c:3.1,f:0.3,fib:1,na:8,ca:16,fe:0.37,vitc:17.9,cat:'🌿'},
+  {n:'Berenjena',cal:25,p:1,c:5.9,f:0.2,fib:3,na:2,ca:9,fe:0.23,vitc:2.2,cat:'🌿'},
+  {n:'Pepino',cal:15,p:0.7,c:3.6,f:0.1,fib:0.5,na:2,ca:16,fe:0.28,vitc:2.8,cat:'🌿'},
+  {n:'Remolacha',cal:43,p:1.6,c:9.6,f:0.2,fib:2.8,na:78,ca:16,fe:0.8,vitc:4.9,cat:'🌿'},
+  {n:'Pimiento rojo',cal:31,p:1,c:6,f:0.3,fib:2.1,na:4,ca:7,fe:0.43,vitc:127.7,cat:'🌿'},
+  {n:'Pimiento verde',cal:20,p:0.9,c:4.6,f:0.2,fib:1.7,na:3,ca:10,fe:0.34,vitc:80.4,cat:'🌿'},
+  {n:'Coliflor',cal:25,p:1.9,c:5,f:0.3,fib:2,na:30,ca:22,fe:0.44,vitc:48.2,cat:'🌿'},
+  {n:'Repollo',cal:25,p:1.3,c:5.8,f:0.1,fib:2.5,na:18,ca:40,fe:0.47,vitc:36.6,cat:'🌿'},
+  {n:'Champiñones',cal:22,p:3.1,c:3.3,f:0.3,fib:1,na:5,ca:3,fe:0.5,vitc:2.1,cat:'🌿'},
+  {n:'Acelga',cal:19,p:1.8,c:3.7,f:0.2,fib:1.6,na:213,ca:51,fe:1.8,vitc:30,cat:'🌿'},
+  {n:'Apio',cal:16,p:0.7,c:3,f:0.2,fib:1.6,na:80,ca:40,fe:0.2,vitc:3.1,cat:'🌿'},
+  {n:'Hinojo',cal:31,p:1.2,c:7.3,f:0.2,fib:3.1,na:52,ca:49,fe:0.73,vitc:12,cat:'🌿'},
+  {n:'Ajo',cal:149,p:6.4,c:33.1,f:0.5,fib:2.1,na:17,ca:181,fe:1.7,vitc:31.2,cat:'🌿'},
+  {n:'Cebolla de verdeo',cal:32,p:1.8,c:7.3,f:0.2,fib:2.6,na:16,ca:72,fe:1.48,vitc:18.8,cat:'🌿'},
+  {n:'Rúcula',cal:25,p:2.6,c:3.7,f:0.7,fib:1.6,na:27,ca:160,fe:1.46,vitc:15,cat:'🌿'},
+  {n:'Poroto verde / chaucha',cal:31,p:1.8,c:7,f:0.1,fib:3.4,na:6,ca:37,fe:1.03,vitc:12.2,cat:'🌿'},
+  // ── FRUTAS ─────────────────────────────────────────────────────────────
+  {n:'Banana',cal:89,p:1.1,c:22.8,f:0.3,fib:2.6,na:1,ca:5,fe:0.26,vitc:8.7,cat:'🍎'},
+  {n:'Manzana',cal:52,p:0.3,c:13.8,f:0.2,fib:2.4,na:1,ca:6,fe:0.12,vitc:4.6,cat:'🍎'},
+  {n:'Naranja',cal:47,p:0.9,c:11.8,f:0.1,fib:2.4,na:0,ca:40,fe:0.1,vitc:53.2,cat:'🍎'},
+  {n:'Pera',cal:57,p:0.4,c:15.2,f:0.1,fib:3.1,na:1,ca:9,fe:0.18,vitc:4.3,cat:'🍎'},
+  {n:'Frutilla',cal:32,p:0.7,c:7.7,f:0.3,fib:2,na:1,ca:16,fe:0.41,vitc:58.8,cat:'🍎'},
+  {n:'Sandía',cal:30,p:0.6,c:7.6,f:0.2,fib:0.4,na:1,ca:7,fe:0.24,vitc:8.1,cat:'🍎'},
+  {n:'Melón',cal:34,p:0.8,c:8.2,f:0.2,fib:0.9,na:16,ca:9,fe:0.21,vitc:36.7,cat:'🍎'},
+  {n:'Uva',cal:69,p:0.7,c:18.1,f:0.2,fib:0.9,na:2,ca:10,fe:0.36,vitc:3.2,cat:'🍎'},
+  {n:'Kiwi',cal:61,p:1.1,c:14.7,f:0.5,fib:3,na:3,ca:34,fe:0.31,vitc:92.7,cat:'🍎'},
+  {n:'Mandarina',cal:53,p:0.8,c:13.3,f:0.3,fib:1.8,na:2,ca:37,fe:0.15,vitc:26.7,cat:'🍎'},
+  {n:'Palta / aguacate',cal:160,p:2,c:8.5,f:14.7,fib:6.7,na:7,ca:12,fe:0.55,vitc:10,cat:'🍎'},
+  {n:'Mango',cal:60,p:0.8,c:14.9,f:0.4,fib:1.6,na:1,ca:11,fe:0.16,vitc:36.4,cat:'🍎'},
+  {n:'Durazno / melocotón',cal:39,p:0.9,c:9.5,f:0.3,fib:1.5,na:0,ca:6,fe:0.25,vitc:6.6,cat:'🍎'},
+  {n:'Uva pasa',cal:299,p:3.1,c:79.2,f:0.5,fib:3.7,na:11,ca:50,fe:1.79,vitc:3.2,cat:'🍎'},
+  {n:'Limón',cal:29,p:1.1,c:9.3,f:0.3,fib:2.8,na:2,ca:26,fe:0.6,vitc:53,cat:'🍎'},
+  {n:'Piña / ananá',cal:50,p:0.5,c:13.1,f:0.1,fib:1.4,na:1,ca:13,fe:0.29,vitc:47.8,cat:'🍎'},
+  {n:'Pomelo',cal:42,p:0.8,c:10.7,f:0.1,fib:1.6,na:0,ca:22,fe:0.08,vitc:31.2,cat:'🍎'},
+  {n:'Ciruela',cal:46,p:0.7,c:11.4,f:0.3,fib:1.4,na:0,ca:6,fe:0.17,vitc:9.5,cat:'🍎'},
+  // ── LÁCTEOS ────────────────────────────────────────────────────────────
+  {n:'Leche entera',cal:61,p:3.2,c:4.8,f:3.3,fib:0,na:43,ca:113,fe:0.03,vitc:0.9,cat:'🥛'},
+  {n:'Leche descremada',cal:34,p:3.4,c:5,f:0.1,fib:0,na:42,ca:122,fe:0.03,vitc:0.9,cat:'🥛'},
+  {n:'Leche semidescremada',cal:46,p:3.3,c:4.9,f:1.6,fib:0,na:43,ca:117,fe:0.03,vitc:0.9,cat:'🥛'},
+  {n:'Yogur natural entero',cal:61,p:3.5,c:4.7,f:3.3,fib:0,na:36,ca:121,fe:0.05,vitc:0.5,cat:'🥛'},
+  {n:'Yogur descremado',cal:45,p:5,c:6,f:0.2,fib:0,na:46,ca:136,fe:0.05,vitc:0.5,cat:'🥛'},
+  {n:'Yogur griego',cal:97,p:9,c:3.6,f:5,fib:0,na:36,ca:110,fe:0.08,vitc:0,cat:'🥛'},
+  {n:'Queso mozzarella',cal:299,p:22.2,c:2.2,f:22.4,fib:0,na:627,ca:505,fe:0.44,vitc:0,cat:'🥛'},
+  {n:'Queso cheddar',cal:403,p:24.9,c:1.3,f:33.1,fib:0,na:621,ca:721,fe:0.68,vitc:0,cat:'🥛'},
+  {n:'Queso blanco (cottage)',cal:72,p:12.5,c:2.7,f:1,fib:0,na:321,ca:60,fe:0.14,vitc:0,cat:'🥛'},
+  {n:'Queso parmesano',cal:431,p:38.5,c:4.1,f:28.6,fib:0,na:1529,ca:1184,fe:0.82,vitc:0,cat:'🥛'},
+  {n:'Queso crema',cal:342,p:5.9,c:4.1,f:34,fib:0,na:321,ca:80,fe:0.11,vitc:0,cat:'🥛'},
+  {n:'Ricota',cal:174,p:11.3,c:3,f:13,fib:0,na:84,ca:207,fe:0.38,vitc:0,cat:'🥛'},
+  {n:'Queso port salut',cal:280,p:21.5,c:0.5,f:21.5,fib:0,na:520,ca:530,fe:0.3,vitc:0,cat:'🥛'},
+  // ── LEGUMBRES ──────────────────────────────────────────────────────────
+  {n:'Garbanzos cocidos',cal:164,p:8.9,c:27.4,f:2.6,fib:7.6,na:24,ca:49,fe:2.89,vitc:1.3,cat:'🫘'},
+  {n:'Lentejas cocidas',cal:116,p:9,c:20.1,f:0.4,fib:7.9,na:2,ca:19,fe:3.33,vitc:1.5,cat:'🫘'},
+  {n:'Porotos negros cocidos',cal:132,p:8.9,c:23.7,f:0.5,fib:8.7,na:1,ca:27,fe:2.1,vitc:0,cat:'🫘'},
+  {n:'Porotos rojos cocidos',cal:127,p:8.7,c:22.8,f:0.5,fib:7.4,na:1,ca:28,fe:2.94,vitc:1.4,cat:'🫘'},
+  {n:'Arvejas cocidas',cal:84,p:5.4,c:15.6,f:0.2,fib:5.7,na:3,ca:25,fe:1.5,vitc:14,cat:'🫘'},
+  {n:'Soja cocida',cal:173,p:16.6,c:9.9,f:9,fib:6,na:1,ca:102,fe:5.14,vitc:1.7,cat:'🫘'},
+  {n:'Edamame (soja verde)',cal:121,p:11.9,c:8.9,f:5.2,fib:5.2,na:6,ca:63,fe:2.27,vitc:6.1,cat:'🫘'},
+  // ── FRUTOS SECOS / SEMILLAS ────────────────────────────────────────────
+  {n:'Almendras',cal:579,p:21.2,c:21.6,f:49.9,fib:12.5,na:1,ca:264,fe:3.71,vitc:0,cat:'🌰'},
+  {n:'Nueces',cal:654,p:15.2,c:13.7,f:65.2,fib:6.7,na:2,ca:98,fe:2.91,vitc:1.3,cat:'🌰'},
+  {n:'Maní / cacahuete crudo',cal:567,p:25.8,c:16.1,f:49.2,fib:8.5,na:18,ca:92,fe:4.58,vitc:0,cat:'🌰'},
+  {n:'Pistacho',cal:560,p:20.2,c:27.2,f:45.3,fib:10.6,na:1,ca:105,fe:3.92,vitc:5.6,cat:'🌰'},
+  {n:'Avellanas',cal:628,p:14.9,c:16.7,f:60.8,fib:9.7,na:0,ca:114,fe:4.7,vitc:6.3,cat:'🌰'},
+  {n:'Castañas de cajú',cal:553,p:18.2,c:30.2,f:43.9,fib:3.3,na:12,ca:37,fe:6.68,vitc:0.5,cat:'🌰'},
+  {n:'Semillas de chía',cal:486,p:16.5,c:42.1,f:30.7,fib:34.4,na:16,ca:631,fe:7.72,vitc:1.6,cat:'🌰'},
+  {n:'Semillas de girasol',cal:584,p:20.8,c:20,f:51.5,fib:8.6,na:9,ca:78,fe:5.25,vitc:1.4,cat:'🌰'},
+  {n:'Semillas de lino',cal:534,p:18.3,c:28.9,f:42.2,fib:27.3,na:30,ca:255,fe:5.73,vitc:0.6,cat:'🌰'},
+  {n:'Semillas de zapallo',cal:559,p:30.2,c:10.7,f:49.1,fib:6,na:7,ca:46,fe:8.82,vitc:1.9,cat:'🌰'},
+  // ── ACEITES / GRASAS ───────────────────────────────────────────────────
+  {n:'Aceite de oliva',cal:884,p:0,c:0,f:100,fib:0,na:2,ca:1,fe:0.56,vitc:0,cat:'🧈'},
+  {n:'Aceite de girasol',cal:884,p:0,c:0,f:100,fib:0,na:0,ca:0,fe:0.07,vitc:0,cat:'🧈'},
+  {n:'Aceite de coco',cal:892,p:0,c:0,f:99.1,fib:0,na:0,ca:1,fe:0.04,vitc:0,cat:'🧈'},
+  {n:'Manteca / mantequilla',cal:717,p:0.9,c:0.1,f:81.1,fib:0,na:576,ca:24,fe:0.02,vitc:0,cat:'🧈'},
+  {n:'Mayonesa',cal:680,p:1,c:0.6,f:75,fib:0,na:635,ca:12,fe:0.41,vitc:0,cat:'🧈'},
+  // ── DULCES / AZÚCARES ──────────────────────────────────────────────────
+  {n:'Azúcar blanca',cal:387,p:0,c:100,f:0,fib:0,na:1,ca:1,fe:0.01,vitc:0,cat:'🍬'},
+  {n:'Miel',cal:304,p:0.3,c:82.4,f:0,fib:0.2,na:4,ca:6,fe:0.42,vitc:0.5,cat:'🍬'},
+  {n:'Dulce de leche',cal:329,p:5.7,c:55.4,f:9.3,fib:0,na:180,ca:183,fe:0.22,vitc:0,cat:'🍬'},
+  {n:'Chocolate negro 70%',cal:598,p:7.8,c:45.9,f:43.1,fib:11,na:20,ca:73,fe:11.9,vitc:0,cat:'🍬'},
+  {n:'Chocolate con leche',cal:535,p:7.6,c:59.4,f:29.7,fib:3.4,na:79,ca:189,fe:3.3,vitc:0,cat:'🍬'},
+  {n:'Mermelada',cal:260,p:0.4,c:68.9,f:0.1,fib:0.6,na:32,ca:22,fe:0.82,vitc:8,cat:'🍬'},
+  // ── BEBIDAS ────────────────────────────────────────────────────────────
+  {n:'Gaseosa cola',cal:37,p:0,c:9.6,f:0,fib:0,na:4,ca:0,fe:0.04,vitc:0,cat:'🥤'},
+  {n:'Gaseosa sin azúcar',cal:1,p:0,c:0.1,f:0,fib:0,na:21,ca:0,fe:0,vitc:0,cat:'🥤'},
+  {n:'Cerveza',cal:43,p:0.5,c:3.6,f:0,fib:0,na:14,ca:4,fe:0.02,vitc:0,cat:'🥤'},
+  {n:'Vino tinto',cal:85,p:0.1,c:2.6,f:0,fib:0,na:6,ca:8,fe:0.46,vitc:0,cat:'🥤'},
+  {n:'Jugo de naranja natural',cal:45,p:0.7,c:10.4,f:0.2,fib:0.2,na:1,ca:11,fe:0.2,vitc:50,cat:'🥤'},
+  {n:'Agua mineral',cal:0,p:0,c:0,f:0,fib:0,na:10,ca:33,fe:0,vitc:0,cat:'🥤'},
+  // ── CONDIMENTOS / SALSAS ───────────────────────────────────────────────
+  {n:'Ketchup',cal:112,p:1.4,c:26,f:0.4,fib:0.7,na:907,ca:18,fe:0.58,vitc:3.9,cat:'🧴'},
+  {n:'Salsa de tomate',cal:68,p:2.2,c:16,f:0.4,fib:1.7,na:557,ca:17,fe:1.33,vitc:10.5,cat:'🧴'},
+  {n:'Salsa de soja',cal:60,p:10.5,c:5.6,f:0.1,fib:0.8,na:5493,ca:20,fe:2.4,vitc:0,cat:'🧴'},
+  {n:'Mostaza',cal:66,p:4.4,c:5.8,f:3.3,fib:3.3,na:1135,ca:63,fe:1.4,vitc:0,cat:'🧴'},
+  {n:'Vinagre',cal:18,p:0,c:0.6,f:0,fib:0,na:2,ca:6,fe:0.03,vitc:0,cat:'🧴'},
+  {n:'Salsa de tomate casera',cal:60,p:2,c:12,f:0.5,fib:2,na:350,ca:20,fe:1,vitc:15,cat:'🧴'},
 ];
 
 // ── Perfil por defecto ──────────────────────────────────────────────
@@ -616,8 +734,10 @@ function setDate() {
 
 function updateUI() {
   const tot = state.foods.reduce((a,f) => ({
-    cals:a.cals+f.cals, prot:a.prot+f.prot, carbs:a.carbs+f.carbs, fat:a.fat+f.fat
-  }), {cals:0,prot:0,carbs:0,fat:0});
+    cals:a.cals+f.cals, prot:a.prot+f.prot, carbs:a.carbs+f.carbs, fat:a.fat+f.fat,
+    fib:+(a.fib+(f.fib||0)).toFixed(1), na:a.na+(f.na||0),
+    ca:a.ca+(f.ca||0), fe:+(a.fe+(f.fe||0)).toFixed(1), vitc:a.vitc+(f.vitc||0)
+  }), {cals:0,prot:0,carbs:0,fat:0,fib:0,na:0,ca:0,fe:0,vitc:0});
   const t = state.targets;
   document.getElementById('cals-today').textContent = tot.cals.toLocaleString('es-AR');
   document.getElementById('prot-today').textContent = tot.prot;
@@ -643,6 +763,31 @@ function updateUI() {
     document.getElementById('fat-pct').textContent = Math.round(tot.fat * 9 / tk * 100) + '%';
   }
   updateTip(tot, t);
+  updateMicroUI(tot);
+}
+
+function updateMicroUI(tot) {
+  const fibEl = document.getElementById('micro-fib');
+  const naEl  = document.getElementById('micro-na');
+  const caEl  = document.getElementById('micro-ca');
+  const feEl  = document.getElementById('micro-fe');
+  const vitcEl= document.getElementById('micro-vitc');
+  if (!fibEl) return;
+  fibEl.textContent  = tot.fib + 'g';
+  naEl.textContent   = tot.na + 'mg';
+  caEl.textContent   = tot.ca + 'mg';
+  feEl.textContent   = tot.fe + 'mg';
+  vitcEl.textContent = tot.vitc + 'mg';
+  // Color feedback: green if ≥ 60% of target, orange if 30-60%, red if < 30%
+  const targets = {fib:25, na:2300, ca:1000, fe:18, vitc:90};
+  const ids = ['micro-fib','micro-na','micro-ca','micro-fe','micro-vitc'];
+  const vals = [tot.fib, tot.na, tot.ca, tot.fe, tot.vitc];
+  ids.forEach((id, i) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const pct = vals[i] / targets[Object.keys(targets)[i]];
+    el.style.color = pct >= 0.6 ? 'var(--fat)' : pct >= 0.3 ? 'var(--accent2)' : 'var(--muted)';
+  });
 }
 
 function updateTip(tot, t) {
@@ -679,9 +824,9 @@ function searchFood(q) {
   res.innerHTML = matches.map(f => `
     <div class="search-item" onclick="selectFood(${DB.indexOf(f)})">
       <div class="search-item-name">${f.cat} ${f.n}</div>
-      <div style="display:flex;gap:10px;margin-top:2px;">
+      <div style="display:flex;gap:10px;margin-top:2px;flex-wrap:wrap;">
         <span style="font-size:11px;color:var(--accent);">${f.cal} kcal</span>
-        <span style="font-size:11px;color:var(--muted);">P:${f.p}g · C:${f.c}g · G:${f.f}g</span>
+        <span style="font-size:11px;color:var(--muted);">P:${f.p}g · C:${f.c}g · G:${f.f}g${f.fib>0?' · Fib:'+f.fib+'g':''}</span>
       </div>
     </div>`).join('');
   res.style.display = 'block';
@@ -693,7 +838,13 @@ function selectFood(idx) {
   document.getElementById('search-input').value = f.n;
   document.getElementById('search-results').style.display = 'none';
   document.getElementById('sel-name').textContent = `${f.cat} ${f.n}`;
-  document.getElementById('sel-info').textContent = `Por 100g: ${f.cal} kcal · P:${f.p}g · C:${f.c}g · G:${f.f}g`;
+  const extras = [];
+  if (f.fib > 0) extras.push(`Fib:${f.fib}g`);
+  if (f.ca > 0)  extras.push(`Ca:${f.ca}mg`);
+  if (f.fe > 0)  extras.push(`Fe:${f.fe}mg`);
+  if (f.vitc > 0) extras.push(`VitC:${f.vitc}mg`);
+  const extStr = extras.length ? ' · ' + extras.join(' · ') : '';
+  document.getElementById('sel-info').textContent = `Por 100g: ${f.cal} kcal · P:${f.p}g · C:${f.c}g · G:${f.f}g${extStr}`;
   document.getElementById('selected-food-card').style.display = 'block';
   updatePreview();
 }
@@ -719,6 +870,11 @@ function addFoodItem() {
     name:`${f.cat} ${f.n} (${g}g)`,
     cals:Math.round(f.cal*r), prot:Math.round(f.p*r),
     carbs:Math.round(f.c*r), fat:Math.round(f.f*r),
+    fib: Math.round((f.fib||0)*r*10)/10,
+    na:  Math.round((f.na||0)*r),
+    ca:  Math.round((f.ca||0)*r),
+    fe:  Math.round((f.fe||0)*r*10)/10,
+    vitc:Math.round((f.vitc||0)*r),
   });
   renderFoodList();
   closeAddModal();
@@ -774,7 +930,8 @@ function renderFoodList() {
   state.foods.forEach((f, i) => {
     const div = document.createElement('div');
     div.className = 'food-item';
-    div.innerHTML = `<div style="flex:1;"><div class="food-name">${f.name}</div><div class="food-macros">P:${f.prot}g · C:${f.carbs}g · G:${f.fat}g</div></div><div style="display:flex;align-items:center;gap:8px;"><div class="food-cals">${f.cals} kcal</div><button class="delete-btn" onclick="deleteFood(${i})">✕</button></div>`;
+    const fibStr = f.fib > 0 ? ` · Fib:${f.fib}g` : '';
+    div.innerHTML = `<div style="flex:1;"><div class="food-name">${f.name}</div><div class="food-macros">P:${f.prot}g · C:${f.carbs}g · G:${f.fat}g${fibStr}</div></div><div style="display:flex;align-items:center;gap:8px;"><div class="food-cals">${f.cals} kcal</div><button class="delete-btn" onclick="deleteFood(${i})">✕</button></div>`;
     list.appendChild(div);
   });
   document.getElementById('empty-state').style.display = state.foods.length === 0 ? 'block' : 'none';
