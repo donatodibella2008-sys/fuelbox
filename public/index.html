@@ -61,6 +61,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--dark);color:var(--text);}
 .modal-overlay.open{display:flex;}
 .modal{background:var(--surface);border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:420px;max-height:90vh;overflow-y:auto;}
 .modal-title{font-family:'Bebas Neue',sans-serif;font-size:20px;margin-bottom:16px;}
+.portion-wrap{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 4px;}
+.portion-btn{background:var(--surface2);border:0.5px solid var(--border);color:var(--text);border-radius:20px;padding:6px 12px;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all 0.15s;white-space:nowrap;}
+.portion-btn:hover,.portion-btn.active{background:var(--accent);border-color:var(--accent);color:white;}
 .form-group{margin-bottom:14px;}
 .form-label{font-size:12px;color:var(--muted);margin-bottom:6px;display:block;}
 .form-input{width:100%;background:var(--surface2);border:0.5px solid var(--border);color:var(--text);border-radius:10px;padding:12px 14px;font-family:'DM Sans',sans-serif;font-size:14px;}
@@ -372,9 +375,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--dark);color:var(--text);}
       <div style="font-weight:500;font-size:14px;" id="sel-name">—</div>
       <div style="font-size:12px;color:var(--muted);margin-top:2px;" id="sel-info">—</div>
     </div>
-    <div class="form-group" style="margin-top:14px;">
+    <!-- Porciones rápidas -->
+    <div id="portion-row" style="display:none;margin-top:10px;">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">Porciones típicas (tocá para seleccionar)</div>
+      <div class="portion-wrap" id="portion-btns"></div>
+    </div>
+
+    <div class="form-group" style="margin-top:10px;">
       <label class="form-label">Cantidad (gramos)</label>
-      <input class="form-input" type="number" placeholder="Ej: 200" id="modal-grams" value="100" oninput="updatePreview()"/>
+      <input class="form-input" type="number" placeholder="Ej: 200" id="modal-grams" value="100" oninput="onGramsInput()"/>
     </div>
     <div class="preview-card" id="preview-card">
       <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">resultado para la cantidad indicada</div>
@@ -812,6 +821,123 @@ function updateTip(tot, t) {
   el.innerHTML = tip;
 }
 
+// ── Porciones típicas por categoría ──────────────────────────────────
+const PORTIONS = {
+  '🥩': [
+    {label:'1 filete chico',  g:100},
+    {label:'1 filete mediano',g:150},
+    {label:'1 pechuga',       g:180},
+    {label:'1 bife grande',   g:250},
+    {label:'½ porción',       g:75},
+  ],
+  '🐟': [
+    {label:'1 filete chico',  g:100},
+    {label:'1 filete mediano',g:150},
+    {label:'1 lata (atún)',   g:170},
+    {label:'½ lata',          g:85},
+    {label:'1 porción',       g:120},
+  ],
+  '🥚': [
+    {label:'1 huevo (S)',  g:45},
+    {label:'1 huevo (M)',  g:60},
+    {label:'1 huevo (L)',  g:70},
+    {label:'2 huevos',     g:120},
+    {label:'3 huevos',     g:180},
+  ],
+  '🌾': [
+    {label:'1 cuchara',       g:15},
+    {label:'½ taza',          g:90},
+    {label:'1 taza',          g:180},
+    {label:'½ plato',         g:150},
+    {label:'1 plato',         g:250},
+    {label:'1 plato lleno',   g:350},
+  ],
+  '🥔': [
+    {label:'1 papa chica',    g:100},
+    {label:'1 papa mediana',  g:150},
+    {label:'1 papa grande',   g:220},
+    {label:'½ plato',         g:120},
+    {label:'1 plato',         g:200},
+  ],
+  '🌿': [
+    {label:'1 puñado',        g:30},
+    {label:'½ taza',          g:60},
+    {label:'1 taza',          g:100},
+    {label:'½ plato',         g:80},
+    {label:'1 plato',         g:150},
+  ],
+  '🍎': [
+    {label:'½ unidad',        g:70},
+    {label:'1 unidad chica',  g:100},
+    {label:'1 unidad mediana',g:150},
+    {label:'1 unidad grande', g:200},
+    {label:'1 taza trozada',  g:140},
+  ],
+  '🥛': [
+    {label:'1 pocillo',       g:100},
+    {label:'1 vaso',          g:200},
+    {label:'1 taza',          g:240},
+    {label:'1 pote yogur',    g:190},
+    {label:'1 feta queso',    g:30},
+    {label:'2 cucharadas',    g:50},
+  ],
+  '🫘': [
+    {label:'½ taza',          g:100},
+    {label:'1 taza',          g:200},
+    {label:'1 plato',         g:250},
+  ],
+  '🌰': [
+    {label:'1 puñado',        g:28},
+    {label:'2 puñados',       g:56},
+    {label:'1 cucharada',     g:15},
+    {label:'1 taza',          g:120},
+  ],
+  '🧈': [
+    {label:'1 cucharadita',   g:5},
+    {label:'1 cucharada',     g:14},
+    {label:'2 cucharadas',    g:28},
+  ],
+  '🍬': [
+    {label:'1 cucharadita',   g:5},
+    {label:'1 cucharada',     g:20},
+    {label:'1 porción',       g:30},
+  ],
+  '🥤': [
+    {label:'1 vaso',          g:200},
+    {label:'1 lata (354ml)',  g:354},
+    {label:'1 botella (500)', g:500},
+  ],
+  '🧴': [
+    {label:'1 cucharadita',   g:5},
+    {label:'1 cucharada',     g:15},
+    {label:'2 cucharadas',    g:30},
+  ],
+};
+
+function renderPortions(food) {
+  const row = document.getElementById('portion-row');
+  const wrap = document.getElementById('portion-btns');
+  const presets = PORTIONS[food.cat];
+  if (!presets) { row.style.display = 'none'; return; }
+  wrap.innerHTML = presets.map(p =>
+    `<button class="portion-btn" onclick="setPortion(${p.g},this)">${p.label}<span style="color:var(--muted);font-size:10px;margin-left:4px;">(${p.g}g)</span></button>`
+  ).join('');
+  row.style.display = 'block';
+}
+
+function setPortion(g, btn) {
+  document.getElementById('modal-grams').value = g;
+  document.querySelectorAll('.portion-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  updatePreview();
+}
+
+function onGramsInput() {
+  // Remove active state from portion buttons when typing manually
+  document.querySelectorAll('.portion-btn').forEach(b => b.classList.remove('active'));
+  updatePreview();
+}
+
 // ── Alimentos ─────────────────────────────────────────────────────────
 function norm(s) { return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
 
@@ -846,6 +972,7 @@ function selectFood(idx) {
   const extStr = extras.length ? ' · ' + extras.join(' · ') : '';
   document.getElementById('sel-info').textContent = `Por 100g: ${f.cal} kcal · P:${f.p}g · C:${f.c}g · G:${f.f}g${extStr}`;
   document.getElementById('selected-food-card').style.display = 'block';
+  renderPortions(f);
   updatePreview();
 }
 
@@ -906,6 +1033,7 @@ function openAddModal() {
   document.getElementById('search-results').style.display = 'none';
   document.getElementById('selected-food-card').style.display = 'none';
   document.getElementById('preview-card').style.display = 'none';
+  document.getElementById('portion-row').style.display = 'none';
   document.getElementById('modal-grams').value = '100';
   document.getElementById('add-modal').classList.add('open');
 }
