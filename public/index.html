@@ -424,6 +424,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--dark);color:var(--text);}
   <button onclick="skipOnboarding()" style="background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">Saltear por ahora</button>
 </div>
 
+<!-- Banner actualización disponible -->
+<div id="update-banner" style="display:none;position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:420px;background:#1A6B3A;border-bottom:0.5px solid #2ecc71;padding:12px 16px;z-index:1000;align-items:center;gap:10px;cursor:pointer;" onclick="applyUpdate()">
+  <span style="font-size:18px;">🔄</span>
+  <span style="flex:1;font-size:13px;color:#fff;font-weight:500;">Nueva versión disponible — tocá para actualizar</span>
+  <span style="font-size:18px;color:rgba(255,255,255,0.6);">›</span>
+</div>
+
 <!-- Banner instalar PWA -->
 <div id="install-banner" style="display:none;position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:420px;background:#1A1A1A;border-bottom:0.5px solid rgba(232,67,26,0.4);padding:10px 16px;z-index:999;align-items:center;gap:10px;">
   <span style="font-size:20px;">🥊</span>
@@ -1510,11 +1517,40 @@ if (!localStorage.getItem('fb_profile')) {
   document.getElementById('onboarding').style.display = 'flex';
 }
 
-// PWA: Service Worker
+// PWA: Service Worker con detección automática de actualizaciones
+let newWorker = null;
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(err => console.warn('SW error:', err));
+    navigator.serviceWorker.register('/sw.js').then(reg => {
+      // Detectar cuando hay un nuevo SW esperando
+      reg.addEventListener('updatefound', () => {
+        newWorker = reg.installing;
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            // Hay una nueva versión lista → mostrar banner
+            document.getElementById('update-banner').style.display = 'flex';
+          }
+        });
+      });
+      // Revisar actualizaciones cada vez que el usuario vuelve a la app
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') reg.update();
+      });
+    }).catch(err => console.warn('SW error:', err));
+
+    // Cuando el SW toma control (tras skipWaiting), recargar la página
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      window.location.reload();
+    });
   });
+}
+
+function applyUpdate() {
+  if (newWorker) {
+    newWorker.postMessage({ type: 'SKIP_WAITING' });
+  } else {
+    window.location.reload();
+  }
 }
 
 // PWA: Install banner
