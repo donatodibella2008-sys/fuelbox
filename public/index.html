@@ -1021,8 +1021,19 @@ function addManual() {
   closeAddModal();
 }
 
-function addFoodFromChat(name, cals, prot, carbs, fat) {
-  state.foods.push({ name:'🤖 '+name, cals, prot, carbs, fat });
+function addFoodFromChat(fd) {
+  state.foods.push({
+    name:  '🤖 ' + fd.nombre,
+    cals:  fd.kcal  || 0,
+    prot:  fd.prot  || 0,
+    carbs: fd.carbs || 0,
+    fat:   fd.fat   || 0,
+    fib:   fd.fib   || 0,
+    na:    fd.na    || 0,
+    ca:    fd.ca    || 0,
+    fe:    fd.fe    || 0,
+    vitc:  fd.vitc  || 0,
+  });
   renderFoodList();
   showScreen('home', document.querySelectorAll('.nav-btn')[0]);
 }
@@ -1058,8 +1069,16 @@ function renderFoodList() {
   state.foods.forEach((f, i) => {
     const div = document.createElement('div');
     div.className = 'food-item';
-    const fibStr = f.fib > 0 ? ` · Fib:${f.fib}g` : '';
-    div.innerHTML = `<div style="flex:1;"><div class="food-name">${f.name}</div><div class="food-macros">P:${f.prot}g · C:${f.carbs}g · G:${f.fat}g${fibStr}</div></div><div style="display:flex;align-items:center;gap:8px;"><div class="food-cals">${f.cals} kcal</div><button class="delete-btn" onclick="deleteFood(${i})">✕</button></div>`;
+    const microBits = [];
+    if (f.fib  > 0) microBits.push(`🌾 Fib:${f.fib}g`);
+    if (f.ca   > 0) microBits.push(`🦴 Ca:${f.ca}mg`);
+    if (f.fe   > 0) microBits.push(`🩸 Fe:${f.fe}mg`);
+    if (f.vitc > 0) microBits.push(`🍊 VitC:${f.vitc}mg`);
+    if (f.na   > 0) microBits.push(`🧂 Na:${f.na}mg`);
+    const microLine = microBits.length
+      ? `<div style="font-size:10px;color:var(--muted);margin-top:2px;opacity:0.75;">${microBits.join(' · ')}</div>`
+      : '';
+    div.innerHTML = `<div style="flex:1;"><div class="food-name">${f.name}</div><div class="food-macros">P:${f.prot}g · C:${f.carbs}g · G:${f.fat}g</div>${microLine}</div><div style="display:flex;align-items:center;gap:8px;"><div class="food-cals">${f.cals} kcal</div><button class="delete-btn" onclick="deleteFood(${i})">✕</button></div>`;
     list.appendChild(div);
   });
   document.getElementById('empty-state').style.display = state.foods.length === 0 ? 'block' : 'none';
@@ -1390,10 +1409,13 @@ ${todayFoods}
 
 REGLAS:
 - Respondé SIEMPRE en español rioplatense, máximo 5 oraciones
-- Si hay imagen de comida: identificá los alimentos, estimá porciones y calculá calorías y macros
-- Cuando identifiques alimentos con cantidad, incluí al final de tu respuesta un bloque JSON:
-  [AGREGAR:{"nombre":"alimento con cantidad","kcal":numero,"prot":numero,"carbs":numero,"fat":numero}]
-- Referencias por 100g: carnes/aves 20-27P/0C/2-35G · pescados 18-25P/0C/1-13G · huevo 13P/1C/11G · clara 11P/0C/0G · arroz cocido 3P/28C/0G · avena 13P/66C/7G · verduras 1-3P/3-10C/0G · frutas 1P/10-20C/0G · lácteos leche 3P/5C/3G · queso blanco 12P/2C/1G
+- Si hay imagen de comida: identificá los alimentos, estimá porciones y calculá calorías, macros Y micronutrientes
+- Cuando identifiques alimentos con cantidad, incluí SIEMPRE al final un bloque JSON con TODOS estos campos (estimá aunque sean valores aproximados, nunca omitas el bloque):
+  [AGREGAR:{"nombre":"alimento con cantidad","kcal":numero,"prot":numero,"carbs":numero,"fat":numero,"fib":numero,"na":numero,"ca":numero,"fe":numero,"vitc":numero}]
+  fib=fibra(g) na=sodio(mg) ca=calcio(mg) fe=hierro(mg) vitc=vitaminaC(mg)
+- Si el usuario pregunta por micronutrientes de un alimento, respondé con valores concretos de fibra, sodio, calcio, hierro y vitamina C
+- Referencias macros por 100g: carnes/aves 20-27P/0C/2-35G · pescados 18-25P/0C/1-13G · huevo 13P/1C/11G · arroz cocido 3P/28C/0G · avena 17P/66C/7G · verduras 1-3P/3-10C/0G · frutas 1P/10-20C/0G · lácteos leche 3P/5C/3G · queso blanco 12P/2C/1G
+- Referencias micronutrientes por 100g: brócoli Fib:2.6g Ca:47mg Fe:0.7mg VitC:89mg · espinaca Fib:2.2g Ca:99mg Fe:2.7mg VitC:28mg · naranja Fib:2.4g Ca:40mg VitC:53mg · almendras Fib:12.5g Ca:264mg Fe:3.7mg · lentejas Fib:7.9g Fe:3.3mg · avena Fib:10.6g Fe:4.7mg · leche Ca:113mg · sardinas Ca:382mg Fe:2.9mg · carne vacuna Fe:2.6mg · pechuga pollo Na:74mg Fe:0.9mg · pan integral Fib:6g · palta Fib:6.7g VitC:10mg
 - Sugerí alimentos concretos cuando el usuario pida consejos`;
 
   // Construct the actual API message
@@ -1434,7 +1456,15 @@ REGLAS:
       try {
         const fd = JSON.parse(jsonMatch[1]);
         reply = reply.replace(/\[AGREGAR:.*?\]/s, '').trim();
-        addBtn = `<br><button class="add-from-chat-btn" onclick='addFoodFromChat(${JSON.stringify(fd.nombre)},${fd.kcal},${fd.prot},${fd.carbs},${fd.fat})'>+ Agregar al registro (${fd.kcal} kcal)</button>`;
+        // Build micro summary for button label
+        const microParts = [];
+        if (fd.fib > 0)  microParts.push(`Fib:${fd.fib}g`);
+        if (fd.ca  > 0)  microParts.push(`Ca:${fd.ca}mg`);
+        if (fd.fe  > 0)  microParts.push(`Fe:${fd.fe}mg`);
+        if (fd.vitc > 0) microParts.push(`VitC:${fd.vitc}mg`);
+        const microLabel = microParts.length ? ` · ${microParts.join(' · ')}` : '';
+        const fdJson = JSON.stringify(fd);
+        addBtn = `<br><button class="add-from-chat-btn" onclick='addFoodFromChat(${fdJson})'>+ Agregar al registro · ${fd.kcal} kcal · P:${fd.prot}g${microLabel}</button>`;
       } catch(e) { /* JSON malformado */ }
     }
 
