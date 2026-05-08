@@ -1466,27 +1466,36 @@ SODIO típico: carnes frescas 50-80mg · fiambres/embutidos 600-1100mg · quesos
     chatHistory.push({role:'user', content:historyPlaceholder});
     chatHistory.push({role:'assistant', content:reply});
 
-    // Parse ALL [AGREGAR:...] blocks (supports multiple foods per message)
-    const agReges = /\[AGREGAR:({.*?})\]/gs;
-    let addBtns = '';
-    let match;
+    // Parse ALL [AGREGAR:...] blocks — regex compatible con todos los browsers
+    // Usamos [\s\S]*? en lugar de .*? con flag s (dotAll no soportado en Safari viejo)
+    const agRegex = /\[AGREGAR:([\s\S]*?)\]/g;
     const foundFoods = [];
-    while ((match = agReges.exec(reply)) !== null) {
-      try { foundFoods.push(JSON.parse(match[1])); } catch(e) { /* malformed */ }
+    let match;
+    while ((match = agRegex.exec(reply)) !== null) {
+      try {
+        // Limpiar saltos de línea literales dentro del JSON antes de parsear
+        const clean = match[1].replace(/\n/g, ' ').replace(/\r/g, '');
+        foundFoods.push(JSON.parse(clean));
+      } catch(e) { /* JSON malformado, ignorar */ }
     }
-    reply = reply.replace(/\[AGREGAR:({.*?})\]/gs, '').trim();
+    // Eliminar TODOS los bloques del texto (mismo patrón, nueva instancia)
+    reply = reply.replace(/\[AGREGAR:[\s\S]*?\]/g, '').trim();
+    // Limpiar líneas vacías que puedan quedar
+    reply = reply.replace(/\n{3,}/g, '\n\n').trim();
+
+    let addBtn = '';
     if (foundFoods.length) {
-      addBtns = '<br>' + foundFoods.map(fd => {
+      addBtn = '<br>' + foundFoods.map(fd => {
         const microParts = [];
-        if (fd.fib  > 0) microParts.push(`🌾${fd.fib}g`);
-        if (fd.ca   > 0) microParts.push(`🦴${fd.ca}mg`);
-        if (fd.fe   > 0) microParts.push(`🩸${fd.fe}mg`);
-        if (fd.vitc > 0) microParts.push(`🍊${fd.vitc}mg`);
+        if ((fd.fib  || 0) > 0) microParts.push(`🌾${fd.fib}g`);
+        if ((fd.ca   || 0) > 0) microParts.push(`🦴${fd.ca}mg`);
+        if ((fd.fe   || 0) > 0) microParts.push(`🩸${fd.fe}mg`);
+        if ((fd.vitc || 0) > 0) microParts.push(`🍊${fd.vitc}mg`);
         const microLabel = microParts.length ? ' · ' + microParts.join(' ') : '';
-        return `<button class="add-from-chat-btn" style="margin-top:4px;display:block;" onclick='addFoodFromChat(${JSON.stringify(fd)})'>+ ${fd.nombre} · ${fd.kcal} kcal · P:${fd.prot}g${microLabel}</button>`;
+        const safe = JSON.stringify(fd).replace(/'/g, '&#39;');
+        return `<button class="add-from-chat-btn" style="margin-top:4px;display:block;width:100%;text-align:left;" onclick='addFoodFromChat(${safe})'>+ ${fd.nombre} · ${fd.kcal} kcal · P:${fd.prot}g${microLabel}</button>`;
       }).join('');
     }
-    const addBtn = addBtns;
 
     lDiv.innerHTML = reply.replace(/\n/g, '<br>') + addBtn;
     lDiv.classList.remove('loading');
