@@ -1402,21 +1402,31 @@ async function sendChat() {
   const sessionsLabel = {1:'1-2/sem',3:'3-4/sem',5:'5-6/sem',7:'todos los días',9:'doble turno'}[p.sessions||3] || '3-4/sem';
   const goalLabel = {deficit:'déficit calórico (-500 kcal)',maintain:'mantenimiento',gain:'superávit muscular (+300 kcal)'}[state.goal] || 'déficit';
 
-  const sysPrompt = `Sos NutriCoach IA, asistente nutricional argentino. Perfil: ${p.weight||75}kg, ${p.height||175}cm, ${p.age||25} años, sexo ${p.sex==='f'?'femenino':'masculino'}. Deportes: ${sportNames} (${sessionsLabel}). Objetivo: ${goalLabel}, meta ${state.targets.cals} kcal/día, ${state.targets.prot}g proteína.
+  const sysPrompt = `Sos NutriCoach IA, asistente nutricional argentino para deportistas. Perfil del usuario: ${p.weight||75}kg, ${p.height||175}cm, ${p.age||25} años, ${p.sex==='f'?'femenino':'masculino'}. Deportes: ${sportNames} (${sessionsLabel}). Objetivo: ${goalLabel}, meta ${state.targets.cals} kcal/día, ${state.targets.prot}g proteína.
 
 Comidas registradas hoy:
 ${todayFoods}
 
-REGLAS:
-- Respondé SIEMPRE en español rioplatense, máximo 5 oraciones
-- Si hay imagen de comida: identificá los alimentos, estimá porciones y calculá calorías, macros Y micronutrientes
-- Cuando identifiques alimentos con cantidad, incluí SIEMPRE al final un bloque JSON con TODOS estos campos (estimá aunque sean valores aproximados, nunca omitas el bloque):
-  [AGREGAR:{"nombre":"alimento con cantidad","kcal":numero,"prot":numero,"carbs":numero,"fat":numero,"fib":numero,"na":numero,"ca":numero,"fe":numero,"vitc":numero}]
-  fib=fibra(g) na=sodio(mg) ca=calcio(mg) fe=hierro(mg) vitc=vitaminaC(mg)
-- Si el usuario pregunta por micronutrientes de un alimento, respondé con valores concretos de fibra, sodio, calcio, hierro y vitamina C
-- Referencias macros por 100g: carnes/aves 20-27P/0C/2-35G · pescados 18-25P/0C/1-13G · huevo 13P/1C/11G · arroz cocido 3P/28C/0G · avena 17P/66C/7G · verduras 1-3P/3-10C/0G · frutas 1P/10-20C/0G · lácteos leche 3P/5C/3G · queso blanco 12P/2C/1G
-- Referencias micronutrientes por 100g: brócoli Fib:2.6g Ca:47mg Fe:0.7mg VitC:89mg · espinaca Fib:2.2g Ca:99mg Fe:2.7mg VitC:28mg · naranja Fib:2.4g Ca:40mg VitC:53mg · almendras Fib:12.5g Ca:264mg Fe:3.7mg · lentejas Fib:7.9g Fe:3.3mg · avena Fib:10.6g Fe:4.7mg · leche Ca:113mg · sardinas Ca:382mg Fe:2.9mg · carne vacuna Fe:2.6mg · pechuga pollo Na:74mg Fe:0.9mg · pan integral Fib:6g · palta Fib:6.7g VitC:10mg
-- Sugerí alimentos concretos cuando el usuario pida consejos`;
+=== FORMATO OBLIGATORIO ===
+Cuando el usuario mencione UN alimento con cantidad → incluí exactamente UN bloque al final:
+[AGREGAR:{"nombre":"nombre (cantidad)","kcal":0,"prot":0,"carbs":0,"fat":0,"fib":0,"na":0,"ca":0,"fe":0,"vitc":0}]
+
+Cuando mencione VARIOS alimentos → incluí UN bloque por alimento, uno abajo del otro:
+[AGREGAR:{"nombre":"alimento1 (cant)","kcal":0,"prot":0,"carbs":0,"fat":0,"fib":0,"na":0,"ca":0,"fe":0,"vitc":0}]
+[AGREGAR:{"nombre":"alimento2 (cant)","kcal":0,"prot":0,"carbs":0,"fat":0,"fib":0,"na":0,"ca":0,"fe":0,"vitc":0}]
+
+TODOS los campos son OBLIGATORIOS. fib=fibra(g) na=sodio(mg) ca=calcio(mg) fe=hierro(mg) vitc=vitC(mg). Estimá valores aunque sean aproximados — NUNCA pongas 0 en todos los micronutrientes a la vez, eso es incorrecto.
+
+=== REFERENCIAS (por 100g) ===
+MACROS: pollo pechuga 120kcal/22P/0C/2G · carne vacuna magra 158kcal/26P/0C/5G · huevo 143kcal/13P/1C/10G · arroz cocido 130kcal/3P/28C/0G · avena 389kcal/17P/66C/7G · papa cocida 87kcal/2P/20C/0G · leche 61kcal/3P/5C/3G · queso blanco 72kcal/12P/3C/1G · lechuga 15kcal/1P/3C/0G · tomate 18kcal/1P/4C/0G
+MICRONUTRIENTES: pollo Fe:0.9mg Na:74mg Ca:11mg · carne vacuna Fe:2.6mg Na:66mg · huevo Ca:56mg Fe:1.75mg · leche Ca:113mg · queso mozzarella Ca:505mg Na:627mg · brócoli Fib:2.6g Ca:47mg Fe:0.7mg VitC:89mg · espinaca Fib:2.2g Ca:99mg Fe:2.7mg VitC:28mg · naranja Fib:2.4g Ca:40mg VitC:53mg · banana Fib:2.6g VitC:8.7mg · frutilla VitC:58mg Fib:2g · lentejas Fib:7.9g Fe:3.3mg · avena Fib:10.6g Fe:4.7mg Ca:54mg · arroz Fib:0.4g · lechuga VitC:9mg Ca:36mg Fe:0.97mg · tomate VitC:13mg Fib:1.2g · pan integral Fib:6g Na:472mg Ca:107mg Fe:3.9mg · palta Fib:6.7g VitC:10mg · almendras Fib:12.5g Ca:264mg Fe:3.7mg · sardinas Ca:382mg Fe:2.9mg · salsa de soja Na:5493mg
+SODIO típico: carnes frescas 50-80mg · fiambres/embutidos 600-1100mg · quesos 300-650mg · pan blanco 491mg · enlatados 300-500mg
+
+=== REGLAS GENERALES ===
+- Respondé SIEMPRE en español rioplatense, máximo 5 oraciones antes de los bloques AGREGAR
+- Si hay imagen: identificá cada alimento visible, estimá porciones, calculá todo
+- Si preguntan por micronutrientes: dá valores concretos de fibra, calcio, hierro, vitC
+- Sugerí alimentos específicos cuando pidan consejos`;
 
   // Construct the actual API message
   let userMsgContent;
@@ -1449,24 +1459,27 @@ REGLAS:
     chatHistory.push({role:'user', content:historyPlaceholder});
     chatHistory.push({role:'assistant', content:reply});
 
-    // Parse optional [AGREGAR:...] block
-    const jsonMatch = reply.match(/\[AGREGAR:({.*?})\]/s);
-    let addBtn = '';
-    if (jsonMatch) {
-      try {
-        const fd = JSON.parse(jsonMatch[1]);
-        reply = reply.replace(/\[AGREGAR:.*?\]/s, '').trim();
-        // Build micro summary for button label
-        const microParts = [];
-        if (fd.fib > 0)  microParts.push(`Fib:${fd.fib}g`);
-        if (fd.ca  > 0)  microParts.push(`Ca:${fd.ca}mg`);
-        if (fd.fe  > 0)  microParts.push(`Fe:${fd.fe}mg`);
-        if (fd.vitc > 0) microParts.push(`VitC:${fd.vitc}mg`);
-        const microLabel = microParts.length ? ` · ${microParts.join(' · ')}` : '';
-        const fdJson = JSON.stringify(fd);
-        addBtn = `<br><button class="add-from-chat-btn" onclick='addFoodFromChat(${fdJson})'>+ Agregar al registro · ${fd.kcal} kcal · P:${fd.prot}g${microLabel}</button>`;
-      } catch(e) { /* JSON malformado */ }
+    // Parse ALL [AGREGAR:...] blocks (supports multiple foods per message)
+    const agReges = /\[AGREGAR:({.*?})\]/gs;
+    let addBtns = '';
+    let match;
+    const foundFoods = [];
+    while ((match = agReges.exec(reply)) !== null) {
+      try { foundFoods.push(JSON.parse(match[1])); } catch(e) { /* malformed */ }
     }
+    reply = reply.replace(/\[AGREGAR:({.*?})\]/gs, '').trim();
+    if (foundFoods.length) {
+      addBtns = '<br>' + foundFoods.map(fd => {
+        const microParts = [];
+        if (fd.fib  > 0) microParts.push(`🌾${fd.fib}g`);
+        if (fd.ca   > 0) microParts.push(`🦴${fd.ca}mg`);
+        if (fd.fe   > 0) microParts.push(`🩸${fd.fe}mg`);
+        if (fd.vitc > 0) microParts.push(`🍊${fd.vitc}mg`);
+        const microLabel = microParts.length ? ' · ' + microParts.join(' ') : '';
+        return `<button class="add-from-chat-btn" style="margin-top:4px;display:block;" onclick='addFoodFromChat(${JSON.stringify(fd)})'>+ ${fd.nombre} · ${fd.kcal} kcal · P:${fd.prot}g${microLabel}</button>`;
+      }).join('');
+    }
+    const addBtn = addBtns;
 
     lDiv.innerHTML = reply.replace(/\n/g, '<br>') + addBtn;
     lDiv.classList.remove('loading');
